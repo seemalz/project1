@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seems — Goal Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0f0f; --card: #1a1a1a; --card-hover: #222; --accent: #3b82f6;
+  --green: #22c55e; --yellow: #eab308; --red: #ef4444; --orange: #f97316;
+  --purple: #a855f7; --text: #e5e5e5; --text-dim: #888; --border: #2a2a2a;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.container { max-width: 960px; margin: 0 auto; padding: 20px; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0 30px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
+header h1 { font-size: 28px; font-weight: 700; }
+header h1 span { color: var(--accent); }
+.date-display { color: var(--text-dim); font-size: 14px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.tab { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.tab:hover { border-color: var(--accent); color: var(--text); }
+.tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+/* Sections */
+.section { display: none; }
+.section.active { display: block; }
+
+/* Goal Cards */
+.goals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 30px; }
+.goal-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); transition: all 0.2s; cursor: pointer; }
+.goal-card:hover { border-color: var(--accent); background: var(--card-hover); }
+.goal-card .icon { font-size: 28px; margin-bottom: 12px; }
+.goal-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.goal-card .status { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+.goal-card .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.goal-card .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.goal-card .streak { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+
+/* Check-in */
+.checkin-form { background: var(--card); border-radius: 12px; padding: 24px; border: 1px solid var(--border); margin-bottom: 20px; }
+.checkin-form h3 { margin-bottom: 16px; font-size: 18px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; font-family: inherit; }
+.form-group textarea { resize: vertical; min-height: 80px; }
+.form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+.btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #2563eb; }
+.btn-danger { background: var(--red); color: white; margin-left: 8px; }
+.btn-danger:hover { background: #dc2626; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* Log */
+.log-entries { display: flex; flex-direction: column; gap: 12px; }
+.log-entry { background: var(--card); border-radius: 10px; padding: 16px; border: 1px solid var(--border); }
+.log-entry .log-date { font-size: 12px; color: var(--accent); font-weight: 600; margin-bottom: 8px; }
+.log-entry .log-goals { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.log-entry .log-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--border); color: var(--text-dim); }
+.log-entry .log-tag.done { background: #16a34a33; color: var(--green); }
+.log-entry .log-notes { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+/* Calendar */
+.calendar-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 700px) { .calendar-wrapper { grid-template-columns: 1fr; } }
+.calendar-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.cal-header h3 { font-size: 16px; }
+.cal-nav { display: flex; gap: 8px; }
+.cal-nav button { background: var(--bg); border: 1px solid var(--border); color: var(--text); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.cal-nav button:hover { border-color: var(--accent); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.cal-day-header { font-size: 11px; color: var(--text-dim); padding: 4px; font-weight: 600; }
+.cal-day { padding: 8px 4px; border-radius: 6px; font-size: 13px; cursor: pointer; position: relative; transition: all 0.15s; }
+.cal-day:hover { background: var(--card-hover); }
+.cal-day.today { background: var(--accent); color: white; font-weight: 700; }
+.cal-day.other-month { color: #444; }
+.cal-day.has-event::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.cal-day.has-checkin::after { background: var(--green); }
+.cal-day.has-event.has-checkin::after { background: linear-gradient(90deg, var(--accent), var(--green)); width: 10px; }
+
+/* Events */
+.events-list { margin-top: 12px; }
+.event-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; background: var(--bg); margin-bottom: 8px; border-left: 3px solid var(--accent); }
+.event-item.travel { border-left-color: var(--orange); }
+.event-item.social { border-left-color: var(--purple); }
+.event-item.fitness { border-left-color: var(--red); }
+.event-item.career { border-left-color: var(--green); }
+.event-item .event-date { font-size: 11px; color: var(--text-dim); min-width: 60px; }
+.event-item .event-title { font-size: 14px; flex: 1; }
+.event-item .event-type { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--border); color: var(--text-dim); }
+.event-delete { background: none; border: none; color: #555; cursor: pointer; font-size: 16px; padding: 0 4px; }
+.event-delete:hover { color: var(--red); }
+
+/* Add event form */
+.add-event-form { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; }
+.add-event-form h3 { margin-bottom: 12px; font-size: 16px; }
+.inline-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.inline-form .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--card); border-radius: 16px; padding: 28px; max-width: 500px; width: 90%; border: 1px solid var(--border); max-height: 80vh; overflow-y: auto; }
+.modal h2 { margin-bottom: 16px; }
+.modal .close-btn { float: right; background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; }
+.milestones { list-style: none; padding: 0; }
+.milestones li { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.milestones li:last-child { border: none; }
+.milestone-check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; }
+.milestone-check.done { background: var(--green); border-color: var(--green); }
+.empty-state { text-align: center; padding: 40px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>🫡 <span>Seems</span> — Goals</h1>
+      <div class="date-display" id="dateDisplay"></div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="calendar">📅 Calendar</button>
+    <button class="tab" data-tab="checkin">Check-in</button>
+    <button class="tab" data-tab="log">History</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="section active" id="tab-dashboard">
+    <div class="goals-grid" id="goalsGrid"></div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="section" id="tab-calendar">
+    <div class="add-event-form">
+      <h3>➕ Add Event</h3>
+      <div class="inline-form">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="eventTitle" placeholder="Trip, meeting, etc.">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="eventDate">
+        </div>
+        <div class="form-group">
+          <label>End Date (optional)</label>
+          <input type="date" id="eventEndDate">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="eventType">
+            <option value="general">General</option>
+            <option value="travel">✈️ Travel</option>
+            <option value="social">🤝 Social</option>
+            <option value="fitness">💪 Fitness</option>
+            <option value="career">🚀 Career</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="addEvent()">Add</button>
+      </div>
+    </div>
+    <div class="calendar-wrapper">
+      <div class="calendar-card">
+        <div class="cal-header">
+          <button class="btn btn-sm" onclick="changeMonth(-1)">←</button>
+          <h3 id="calMonth"></h3>
+          <button class="btn btn-sm" onclick="changeMonth(1)">→</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div class="calendar-card">
+        <h3 style="margin-bottom:12px">Upcoming</h3>
+        <div id="upcomingEvents"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Check-in -->
+  <div class="section" id="tab-checkin">
+    <div class="checkin-form">
+      <h3>📝 Daily Check-in</h3>
+      <div class="form-group">
+        <label>What did you eat today?</label>
+        <textarea id="meals" placeholder="Breakfast, lunch, dinner..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Top 3 priorities — did you hit them?</label>
+        <textarea id="priorities" placeholder="1. ... ✅/❌&#10;2. ... ✅/❌&#10;3. ... ✅/❌"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Did you reach out to anyone?</label>
+        <input type="text" id="social" placeholder="Who did you connect with?">
+      </div>
+      <div class="form-group">
+        <label>Which goals did you work on?</label>
+        <div id="goalChecks" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;"></div>
+      </div>
+      <div class="form-group">
+        <label>Notes / reflections</label>
+        <textarea id="notes" placeholder="How are you feeling? Any wins or struggles?"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="submitCheckin()">Save Check-in 🫡</button>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="section" id="tab-log">
+    <div class="log-entries" id="logEntries">
+      <div class="empty-state">No check-ins yet. Start your first one! 🫡</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="goalModal">
+    <button class="close-btn" onclick="document.getElementById('modalOverlay').classList.remove('active')">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+const GOALS = [
+  { id: 'fitness', icon: '💪', name: 'Fitness', color: '#ef4444', status: 'Phase 1: Recovery Foundation (early March)',
+    milestones: ['Walking 20-30min daily', '10min daily stretching', 'Basic core work 3x/week', 'Phase 2: Strength building', '3x/week strength training', 'Progressive overload system', 'Performance phase locked in'] },
+  { id: 'nutrition', icon: '🥗', name: 'Nutrition', color: '#22c55e', status: 'Foundation: 0.8-1.2g protein per kg + 25g fiber',
+    milestones: ['Meal prep 1-2x/week', 'Hit protein target daily', 'Track first 4 weeks', '80/20 rule adherence', 'Hydration habit locked', 'Balanced macro plates', 'System fully automated'] },
+  { id: 'career', icon: '🚀', name: 'Career', color: '#3b82f6', status: 'Assessment → Execution → Promotion Campaign',
+    milestones: ['Define promotion criteria (meet manager)', 'Skill gap analysis complete', 'Stretch project secured', 'External visibility building', 'Mentor/sponsor identified', 'Promotion conversation scheduled', 'Business case prepared'] },
+  { id: 'social', icon: '🤝', name: 'Social', color: '#a855f7', status: 'Systematic reconnection with Canada friends',
+    milestones: ['Contact audit complete', 'Text 2-3 closest friends', 'Schedule calls with responders', '5+ regular contacts', 'Monthly check-in rhythm', 'Annual Canada visit planned', 'Group activities established'] },
+  { id: 'organization', icon: '📋', name: 'Organization', color: '#f97316', status: 'Systems-based: Inbox, Calendar, Tasks, Weekly Rhythm',
+    milestones: ['Inbox zero sprint (2-hour session)', 'Calendar audit + time blocking', 'Task system with Henry', 'Daily 15min maintenance', '4-action email rule', 'Weekly rhythm established', 'System optimization'] },
+  { id: 'travel', icon: '✈️', name: 'Travel & Plans', color: '#06b6d4', status: 'Track trips, events, adventures',
+    milestones: ['Plan first trip', 'Book flights/hotels', 'Create bucket list', 'Take the trip', 'Plan next one'] }
+];
+
+let checkins = JSON.parse(localStorage.getItem('checkins') || '[]');
+let milestoneState = JSON.parse(localStorage.getItem('milestones') || '{}');
+let events = JSON.parse(localStorage.getItem('events') || '[]');
+let calYear, calMonth;
+
+const now = new Date();
+calYear = now.getFullYear();
+calMonth = now.getMonth();
+document.getElementById('dateDisplay').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+document.getElementById('eventDate').value = now.toISOString().split('T')[0];
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'calendar') renderCalendar();
+  });
+});
+
+// Goals
+function renderGoals() {
+  document.getElementById('goalsGrid').innerHTML = GOALS.map(g => {
+    const completed = (milestoneState[g.id] || []).filter(Boolean).length;
+    const progress = Math.round((completed / g.milestones.length) * 100);
+    const streak = getStreak(g.id);
+    return `<div class="goal-card" onclick="openGoal('${g.id}')">
+      <div class="icon">${g.icon}</div>
+      <h3>${g.name}</h3>
+      <div class="status">${g.status}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${progress}%;background:${g.color}"></div></div>
+      <div class="streak">${progress}% complete${streak > 0 ? ' · ' + streak + ' day streak 🔥' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function getStreak(goalId) {
+  let streak = 0;
+  const sorted = [...checkins].sort((a, b) => new Date(b.date) - new Date(a.date));
+  for (const c of sorted) {
+    if (c.goals && c.goals.includes(goalId)) streak++; else break;
+  }
+  return streak;
+}
+
+function renderGoalChecks() {
+  document.getElementById('goalChecks').innerHTML = GOALS.map(g =>
+    `<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg)">
+      <input type="checkbox" value="${g.id}" style="accent-color:var(--accent)"> ${g.icon} ${g.name}
+    </label>`
+  ).join('');
+}
+
+// Check-in
+function submitCheckin() {
+  const entry = {
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toLocaleTimeString(),
+    meals: document.getElementById('meals').value,
+    priorities: document.getElementById('priorities').value,
+    social: document.getElementById('social').value,
+    notes: document.getElementById('notes').value,
+    goals: [...document.querySelectorAll('#goalChecks input:checked')].map(c => c.value)
+  };
+  if (!entry.meals && !entry.priorities && !entry.notes) { alert('Fill in at least one field!'); return; }
+  checkins.push(entry);
+  localStorage.setItem('checkins', JSON.stringify(checkins));
+  ['meals','priorities','social','notes'].forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('#goalChecks input').forEach(c => c.checked = false);
+  renderLog(); renderGoals();
+  alert('Check-in saved! 🫡');
+}
+
+function renderLog() {
+  const el = document.getElementById('logEntries');
+  if (!checkins.length) { el.innerHTML = '<div class="empty-state">No check-ins yet. Start your first one! 🫡</div>'; return; }
+  el.innerHTML = [...checkins].sort((a, b) => new Date(b.date) - new Date(a.date)).map(c => `
+    <div class="log-entry">
+      <div class="log-date">${c.date} · ${c.time || ''}</div>
+      <div class="log-goals">${(c.goals || []).map(gid => { const g = GOALS.find(x => x.id === gid); return g ? `<span class="log-tag done">${g.icon} ${g.name}</span>` : ''; }).join('')}</div>
+      ${c.meals ? `<div class="log-notes">🍽️ ${c.meals}</div>` : ''}
+      ${c.priorities ? `<div class="log-notes">🎯 ${c.priorities}</div>` : ''}
+      ${c.social ? `<div class="log-notes">🤝 ${c.social}</div>` : ''}
+      ${c.notes ? `<div class="log-notes">💭 ${c.notes}</div>` : ''}
+    </div>`).join('');
+}
+
+// Calendar
+function renderCalendar() {
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('calMonth').textContent = `${monthNames[calMonth]} ${calYear}`;
+  
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+  const today = new Date();
+  
+  const checkinDates = new Set(checkins.map(c => c.date));
+  const eventDates = new Set();
+  events.forEach(e => {
+    eventDates.add(e.date);
+    if (e.endDate) {
+      let d = new Date(e.date + 'T00:00:00');
+      const end = new Date(e.endDate + 'T00:00:00');
+      while (d <= end) { eventDates.add(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1); }
+    }
+  });
+
+  let html = ['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => `<div class="cal-day-header">${d}</div>`).join('');
+  
+  for (let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="cal-day other-month">${daysInPrev - i}</div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === d;
+    const hasEvent = eventDates.has(dateStr);
+    const hasCheckin = checkinDates.has(dateStr);
+    let cls = 'cal-day';
+    if (isToday) cls += ' today';
+    if (hasEvent) cls += ' has-event';
+    if (hasCheckin) cls += ' has-checkin';
+    html += `<div class="${cls}" onclick="showDayEvents('${dateStr}')">${d}</div>`;
+  }
+  const remaining = 42 - (firstDay + daysInMonth);
+  for (let d = 1; d <= remaining; d++) {
+    html += `<div class="cal-day other-month">${d}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+  renderUpcoming();
+}
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function addEvent() {
+  const title = document.getElementById('eventTitle').value.trim();
+  const date = document.getElementById('eventDate').value;
+  const endDate = document.getElementById('eventEndDate').value;
+  const type = document.getElementById('eventType').value;
+  if (!title || !date) { alert('Need a title and date!'); return; }
+  events.push({ id: Date.now(), title, date, endDate: endDate || null, type });
+  events.sort((a, b) => a.date.localeCompare(b.date));
+  localStorage.setItem('events', JSON.stringify(events));
+  document.getElementById('eventTitle').value = '';
+  document.getElementById('eventEndDate').value = '';
+  renderCalendar();
+}
+
+function deleteEvent(id) {
+  events = events.filter(e => e.id !== id);
+  localStorage.setItem('events', JSON.stringify(events));
+  renderCalendar();
+}
+
+function renderUpcoming() {
+  const today = new Date().toISOString().split('T')[0];
+  const upcoming = events.filter(e => e.date >= today || (e.endDate && e.endDate >= today)).slice(0, 10);
+  const el = document.getElementById('upcomingEvents');
+  if (!upcoming.length) { el.innerHTML = '<div class="empty-state" style="padding:20px">No upcoming events. Add one above!</div>'; return; }
+  const typeIcons = { travel: '✈️', social: '🤝', fitness: '💪', career: '🚀', general: '📌' };
+  el.innerHTML = upcoming.map(e => `
+    <div class="event-item ${e.type}">
+      <div class="event-date">${formatDate(e.date)}${e.endDate ? ' — ' + formatDate(e.endDate) : ''}</div>
+      <div class="event-title">${typeIcons[e.type] || '📌'} ${e.title}</div>
+      <button class="event-delete" onclick="deleteEvent(${e.id})">✕</button>
+    </div>`).join('');
+}
+
+function showDayEvents(dateStr) {
+  const dayEvents = events.filter(e => {
+    if (e.date === dateStr) return true;
+    if (e.endDate && e.date <= dateStr && e.endDate >= dateStr) return true;
+    return false;
+  });
+  const dayCheckins = checkins.filter(c => c.date === dateStr);
+  if (!dayEvents.length && !dayCheckins.length) return;
+  
+  let content = `<h2>📅 ${formatDateLong(dateStr)}</h2>`;
+  if (dayEvents.length) {
+    content += '<h3 style="margin:12px 0 8px;font-size:14px;color:var(--text-dim)">Events</h3>';
+    dayEvents.forEach(e => { content += `<div style="padding:6px 0;font-size:14px">${e.title} <span style="color:var(--text-dim);font-size:12px">(${e.type})</span></div>`; });
+  }
+  if (dayCheckins.length) {
+    content += '<h3 style="margin:12px 0 8px;font-size:14px;color:var(--text-dim)">Check-in</h3>';
+    dayCheckins.forEach(c => {
+      if (c.meals) content += `<div style="font-size:13px;color:var(--text-dim);padding:2px 0">🍽️ ${c.meals}</div>`;
+      if (c.priorities) content += `<div style="font-size:13px;color:var(--text-dim);padding:2px 0">🎯 ${c.priorities}</div>`;
+      if (c.notes) content += `<div style="font-size:13px;color:var(--text-dim);padding:2px 0">💭 ${c.notes}</div>`;
+    });
+  }
+  document.getElementById('modalContent').innerHTML = content;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function formatDate(str) {
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function formatDateLong(str) {
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// Modal
+function openGoal(id) {
+  const g = GOALS.find(x => x.id === id);
+  if (!milestoneState[id]) milestoneState[id] = g.milestones.map(() => false);
+  document.getElementById('modalContent').innerHTML = `
+    <h2>${g.icon} ${g.name}</h2>
+    <p style="color:var(--text-dim);margin-bottom:16px">${g.status}</p>
+    <h3 style="margin-bottom:12px;font-size:14px;color:var(--text-dim)">Milestones</h3>
+    <ul class="milestones">${g.milestones.map((m, i) => `
+      <li><div class="milestone-check ${milestoneState[id][i] ? 'done' : ''}" onclick="toggleMilestone('${id}',${i},event)"></div>
+      <span style="${milestoneState[id][i] ? 'text-decoration:line-through;color:var(--text-dim)' : ''}">${m}</span></li>`).join('')}
+    </ul>`;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function toggleMilestone(goalId, index, event) {
+  event.stopPropagation();
+  milestoneState[goalId][index] = !milestoneState[goalId][index];
+  localStorage.setItem('milestones', JSON.stringify(milestoneState));
+  openGoal(goalId); renderGoals();
+}
+
+function closeModal(event) {
+  if (event.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+
+// Init
+renderGoals(); renderGoalChecks(); renderLog();
+</script>
+</body>
+</html>
